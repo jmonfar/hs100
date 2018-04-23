@@ -11,6 +11,8 @@ script=$(basename $0)
 folder=$(dirname $0)
 cd $folder
 
+# URL for tplink cloud services server
+tplinkURL="https://wap.tplinkcloud.com/"
 # UUID generated on https://www.uuidgenerator.net/version4
 terminalUUID="701c7cd8-80d9-4dda-916c-738a9689e9c7"
 # Kasa account credentials
@@ -101,7 +103,7 @@ send_to_switch_no_token () {
    data="${1}"
 #  echo ${data}
    
-   curl -sS --request POST "https://eu-wap.tplinkcloud.com/ HTTP/1.1" \
+   curl -sS --request POST "${tplinkURL} HTTP/1.1" \
    --data "${data}" \
    --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
@@ -110,7 +112,7 @@ send_to_switch () {
    data="${1}"
    echo ${data}
    
-   curl -sS --request POST "https://eu-wap.tplinkcloud.com/?token=${Token} HTTP/1.1" \
+   curl -sS --request POST "${tplinkURL}?token=${Token} HTTP/1.1" \
    --data "${data}" \
    --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
