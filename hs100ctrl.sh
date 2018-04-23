@@ -92,7 +92,7 @@ check_dependencies() {
 
 show_usage() {
   echo "Usage: $0 COMMAND "
-  echo "where COMMAND is one of on/off/get_sysinfo/get_token/get_scaninfo/set_stainfo"
+  echo "where COMMAND is one of on/off/get_sysinfo/get_token/get_scaninfo/set_stainfo/getDeviceList"
   exit 1
 }
 
@@ -164,6 +164,9 @@ case "$cmd" in
   set_stainfo)
      send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"netif\":{\"set_stainfo\":{\"ssid\":\"'${ssid}'\",\"password\":\"'${pwd}'\",\"key_type\":3}}}" }}'
 	 ;;  
+  getDeviceList)
+     send_to_switch '{"method":"getDeviceList"}'
+     ;;
   *)
      show_usage
      ;;
