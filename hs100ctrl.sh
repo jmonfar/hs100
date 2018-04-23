@@ -15,36 +15,7 @@ cd $folder
 tplinkURL="https://wap.tplinkcloud.com/"
 # UUID generated on https://www.uuidgenerator.net/version4
 terminalUUID="701c7cd8-80d9-4dda-916c-738a9689e9c7"
-# Kasa account credentials
-cloudUserName="jordi.monfar@gmail.com"
-cloudPassword="3trancos"
 
-# How to get the Token: http://itnerd.space/2017/06/19/how-to-authenticate-to-tp-link-cloud-api/
-# for normal command execution, token must be already generated and stored in $tokenfile
-
-tokenfile=${script/.sh/.token}
-
-if [ -f $tokenfile ]
-then
-  # tokens expire in one month
-  # let's play safe, and if token is older than one week (604800 seconds) regenerate it
-  if [ $(($(date +%s)-$(date -r $tokenfile +%s))) -gt 604800 ]
-  then
-    rm $tokenfile
-    sh ./$script get_token
-  fi
-  Token=$(cat $tokenfile)
-else
-  # token file is missing, so create it
-  if [ "$cmd" != get_token ]
-  then
-    # check required to avoid infinite recursive loop
-	# create token and use it
-	sh ./$script get_token
-    Token=$(cat $tokenfile)
-  fi
-fi
- 
 # How to get parameters (from http://itnerd.space/2017/01/22/how-to-control-your-tp-link-hs100-smartplug-from-internet/)
 
 # adb devices
@@ -67,6 +38,50 @@ deviceID="8006E6EDC0696B7B38D61832B4A8F12E171E66D7"
 # cat f/INSTALLATION
 termid="278960c6-d86d-438d-82a7-fa0b809ef575"
 
+# Read Kasa app credentials from external file
+
+authfile=${script/.sh/.auth}
+if [ -f $authfile ]
+then
+  # must contain cloudUserName and cloudPassword definitions
+  # with valid username and password for Kasa app
+  . ./${authfile}
+fi
+# check required variables have been sourced
+if [ -z "$cloudUserName" -o -z "cloudPassword" ]
+then
+  # authfile or variable definition missing, exit with error
+  echo "${authfile} must exist defining cloudUserName and "
+  echo "cloudPassword with valid Kasa username and password credentials"
+  exit 1
+fi
+
+# How to get the Token: http://itnerd.space/2017/06/19/how-to-authenticate-to-tp-link-cloud-api/
+# for normal command execution, token must be already generated and stored in $tokenfile
+
+tokenfile=${script/.sh/.token}
+if [ -f $tokenfile ]
+then
+  # tokens expire in one month
+  # let's play safe, and if token is older than one week (604800 seconds) regenerate it
+  if [ $(($(date +%s)-$(date -r $tokenfile +%s))) -gt 604800 ]
+  then
+    rm $tokenfile
+    sh ./$script get_token
+  fi
+  Token=$(cat $tokenfile)
+else
+  # token file is missing, so create it
+  if [ "$cmd" != get_token ]
+  then
+    # check required to avoid infinite recursive loop
+	# create token and use it
+	sh ./$script get_token
+    Token=$(cat $tokenfile)
+  fi
+fi
+ 
+
 # Commands available and syntax taken from https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/
 
 # tools
@@ -76,8 +91,8 @@ check_dependencies() {
  }
 
 show_usage() {
-  echo Usage: $0 COMMAND
-  echo where COMMAND is one of on/off/get_sysinfo/get_token/get_scaninfo/set_stainfo
+  echo "Usage: $0 COMMAND "
+  echo "where COMMAND is one of on/off/get_sysinfo/get_token/get_scaninfo/set_stainfo"
   exit 1
 }
 
