@@ -9,46 +9,46 @@ fi
 
 script=$(basename $0)
 folder=$(dirname $0)
-cd $folder
+cd ${folder}
 
-# URL for tplink cloud services server
-tplinkURL="https://wap.tplinkcloud.com/"
-# UUID generated on https://www.uuidgenerator.net/version4
-terminalUUID="701c7cd8-80d9-4dda-916c-738a9689e9c7"
+##
+# General instructions:
+##
 
-# How to get parameters (from http://itnerd.space/2017/01/22/how-to-control-your-tp-link-hs100-smartplug-from-internet/)
+# First, on the same folder as the .sh script, create a .auth file with same name before .,
+# defining variables cloudUserName and cloudPassword with user and password credentials used in Kasa app / tplink account
 
-# adb devices
-# adb backup -f backup.ab com.tplink.kasa_android
-# dd if=backup.ab bs=1 skip=24 | python -c "import zlib,sys;sys.stdout.write(zlib.decompress(sys.stdin.read()))" | tar -xvf -
-# cd apps/com.tplink.kasa_android
+# Second, create a .data file also with same name before .,
+# defining variables terminalUUID appServerUrl deviceId
+# for terminalUUID use an arbitrary UUID generated on https://www.uuidgenerator.net/version4
+# for appServerUrl and deviceId use first arbitrary dummy values (e.g. "X")
 
-## Section to get Token removed as obsolete: see above for current method
-## apt-get install sqlite3 #if required
-## sqlite3 db/iot.1.db "select token from accounts;"
-## Token="fd9d51c7-cdd9abd5be5545c4afc068c" # expired April 21, 2017
-## Token="fd9d51c7-1731bfe70aa64871bd411e2" # expired May 21, 2017
-## Token="fd9d51c7-6ca4e0fa523e4669bffc055" # expired Jun 21, 2017
-## Token="fd9d51c7-5c6b6b1c2ea744149ecc40b"
+# Third, execute script with getDeviceList command to get linked device list
+# note appServerUrl and deviceId values for the device you want to control, and put them in the .data file
 
-# sqlite3 db/iot.1.db "select deviceAlias,deviceID from devices;"
-# deviceID="FMG Smart Plug 1|8006E6EDC0696B7B38D61832B4A8F12E171E66D7"
-deviceID="8006E6EDC0696B7B38D61832B4A8F12E171E66D7"
+# Now you can execute any other command from the supported list (execute script without argument to see it).
 
-# cat f/INSTALLATION
-termid="278960c6-d86d-438d-82a7-fa0b809ef575"
+# A script.token file will be automatically created on same dir to use in subsequent executions
+# tokens expire but script automatically recreates them when needed.
 
-# Read Kasa app credentials from external file
+# Commands available and syntax taken from https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/
+# and http://itnerd.space/2017/05/21/how-to-get-the-tp-link-hs100-cloud-end-point-url/ (for getDeviceList)
+# How to get the tokens: http://itnerd.space/2017/06/19/how-to-authenticate-to-tp-link-cloud-api/
 
+##
+# Read parameters from external files (.auth, .data, .token)
+##
+
+# Read Kasa app credentials from external file, used only to generate tokens
 authfile=${script/.sh/.auth}
-if [ -f $authfile ]
+if [ -f ${authfile} ]
 then
   # must contain cloudUserName and cloudPassword definitions
   # with valid username and password for Kasa app
   . ./${authfile}
 fi
 # check required variables have been sourced
-if [ -z "$cloudUserName" -o -z "cloudPassword" ]
+if [ -z "${cloudUserName}" -o -z "{cloudPassword}" ]
 then
   # authfile or variable definition missing, exit with error
   echo "${authfile} must exist defining cloudUserName and "
@@ -56,35 +56,48 @@ then
   exit 1
 fi
 
-# How to get the Token: http://itnerd.space/2017/06/19/how-to-authenticate-to-tp-link-cloud-api/
-# for normal command execution, token must be already generated and stored in $tokenfile
+# Read app and device parameters from external file
+datafile=${script/.sh/.data}
+if [ -f ${datafile} ]
+then
+  # must contain terminalUUID appServerUrl deviceId definitions
+  . ./${datafile}
+fi
+# check required variables have been sourced
+if [ -z "${terminalUUID}" -o -z "${appServerUrl}" -o -z "${deviceId}" ]
+then
+  # datafile or variable definition missing, exit with error
+  echo "${datafile} must exist defining terminalUUID appServerUrl deviceId"
+  exit 1
+fi
 
+
+# for normal command execution, token must be already generated and stored in tokenfile
 tokenfile=${script/.sh/.token}
-if [ -f $tokenfile ]
+if [ -f ${tokenfile} ]
 then
   # tokens expire in one month
   # let's play safe, and if token is older than one week (604800 seconds) regenerate it
-  if [ $(($(date +%s)-$(date -r $tokenfile +%s))) -gt 604800 ]
+  if [ $(($(date +%s)-$(date -r ${tokenfile} +%s))) -gt 604800 ]
   then
-    rm $tokenfile
-    sh ./$script get_token
+    rm ${tokenfile}
+    sh ./${script} get_token
   fi
-  Token=$(cat $tokenfile)
+  Token=$(cat ${tokenfile})
 else
   # token file is missing, so create it
-  if [ "$cmd" != get_token ]
+  if [ "${cmd}" != get_token ]
   then
     # check required to avoid infinite recursive loop
 	# create token and use it
-	sh ./$script get_token
-    Token=$(cat $tokenfile)
+	sh ./${script} get_token
+    Token=$(cat ${tokenfile})
   fi
 fi
- 
 
-# Commands available and syntax taken from https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/
-
-# tools
+##
+# Functions
+##
 
 check_dependencies() {
   command -v curl >/dev/null 2>&1 || { echo >&2 "The curl programme for sending data over the network isn't in the path, communication with the plug will fail"; exit 2; }
@@ -100,34 +113,34 @@ check_arguments() {
    check_arg() {
     name="$1"
     value="$2"
-    if [ -z "$value" ]; then
-       echo "missing argument $name"
+    if [ -z "${value}" ]; then
+       echo "missing argument ${name}"
        show_usage
     fi
    }
 
-   check_arg "command" $cmd
-   if [ $cmd = set_stainfo ]
+   check_arg "command" ${cmd}
+   if [ ${cmd} = set_stainfo ]
    then
-     check_arg ssid $ssid
-	 check_arg pwd $pwd
+     check_arg ssid ${ssid}
+	 check_arg pwd ${pwd}
    fi
 }
 
 send_to_switch_no_token () {
-   data="${1}"
+   data="$1"
 #  echo ${data}
    
-   curl -sS --request POST "${tplinkURL} HTTP/1.1" \
+   curl -sS --request POST "${appServerUrl} HTTP/1.1" \
    --data "${data}" \
    --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
 
 send_to_switch () {
-   data="${1}"
+   data="$1"
    echo ${data}
    
-   curl -sS --request POST "${tplinkURL}?token=${Token} HTTP/1.1" \
+   curl -sS --request POST "${appServerUrl}?token=${Token} HTTP/1.1" \
    --data "${data}" \
    --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
@@ -139,30 +152,30 @@ send_to_switch () {
 check_dependencies
 check_arguments
 
-case "$cmd" in
+case "${cmd}" in
   on)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":1}}}" }}'
+     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":1}}}" }}'
      ;;
   off)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":0}}}" }}'
+     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":0}}}" }}'
      ;;
   get_sysinfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"system\":{\"get_sysinfo\":{}}}" }}'
+     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"get_sysinfo\":{}}}" }}'
      ;;
   get_token)
-     # Token is generated by user/password login and stored in $tokenfile in same folder as $script
+     # Token is generated by user/password login and stored in tokenfile in same folder as script
 	 # format of request reply:
 	 # {"error_code":0,"result":{"accountId":"699052","regTime":"2016-12-25 21:32:10","email":"jordi.monfar@gmail.com","token":"fd9d51c7-ff91bdb4cffc4e2092fad10"}}
      # order of results is NOT guaranteed, observed that sometimes email comes before or after token
      # it is safer to parse result by tag name than by position
-     echo "Generating token and storing it in $tokenfile"
-	 send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa_Android", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee $tokenfile
+     echo "Generating token and storing it in ${tokenfile}"
+	 send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa_Android", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee ${tokenfile}
      ;;
   get_scaninfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"netif\":{\"get_scaninfo\":{\"refresh\":1}}}" }}'
+     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"get_scaninfo\":{\"refresh\":1}}}" }}'
 	 ;;
   set_stainfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceID}'", "requestData": "{\"netif\":{\"set_stainfo\":{\"ssid\":\"'${ssid}'\",\"password\":\"'${pwd}'\",\"key_type\":3}}}" }}'
+     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"set_stainfo\":{\"ssid\":\"'${ssid}'\",\"password\":\"'${pwd}'\",\"key_type\":3}}}" }}'
 	 ;;  
   getDeviceList)
      send_to_switch '{"method":"getDeviceList"}'

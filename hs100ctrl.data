@@ -1,0 +1,8 @@
+# For terminalUUID use an arbitrary UUID generated on https://www.uuidgenerator.net/version4
+terminalUUID="701c7cd8-80d9-4dda-916c-738a9689e9c7"
+
+# Use getDeviceList command to get linked device list
+# note appServerUrl and deviceId values for the device you want to control, and put them in the .data file
+appServerUrl="https://eu-wap.tplinkcloud.com/"
+deviceId="8006E6EDC0696B7B38D61832B4A8F12E171E66D7"
+# For initial getDeviceList execution use arbitrary dummy values
