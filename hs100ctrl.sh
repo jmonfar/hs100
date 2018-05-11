@@ -19,12 +19,12 @@ cd ${folder}
 # defining variables cloudUserName and cloudPassword with user and password credentials used in Kasa app / tplink account
 
 # Second, create a .data file also with same name before .,
-# defining variables terminalUUID appServerUrl deviceId
+# defining variables terminalUUID deviceId
 # for terminalUUID use an arbitrary UUID generated on https://www.uuidgenerator.net/version4
-# for appServerUrl and deviceId use first arbitrary dummy values (e.g. "X")
+# leave deviceId variable empty or to dummy value on this first execution
 
 # Third, execute script with getDeviceList command to get linked device list
-# note appServerUrl and deviceId values for the device you want to control, and put them in the .data file
+# note deviceId value for the device you want to control, and update it in the .data file for the deviceId variable
 
 # Now you can execute any other command from the supported list (execute script without argument to see it).
 
@@ -40,10 +40,10 @@ cd ${folder}
 ##
 
 # Read Kasa app credentials from external file, used only to generate tokens
-authfile=${script/.sh/.auth}
+authfile=${script%.sh}.auth
 if [ -f ${authfile} ]
 then
-  # must contain cloudUserName and cloudPassword definitions
+  # must define variables cloudUserName and cloudPassword in bash syntax
   # with valid username and password for Kasa app
   . ./${authfile}
 fi
@@ -57,23 +57,22 @@ then
 fi
 
 # Read app and device parameters from external file
-datafile=${script/.sh/.data}
+datafile=${script%.sh}.data
 if [ -f ${datafile} ]
 then
-  # must contain terminalUUID appServerUrl deviceId definitions
+  # must define variables terminalUUID and deviceId in bash syntax
   . ./${datafile}
 fi
 # check required variables have been sourced
-if [ -z "${terminalUUID}" -o -z "${appServerUrl}" -o -z "${deviceId}" ]
+if [ -z "${terminalUUID}" -o -z "${deviceId}" ]
 then
   # datafile or variable definition missing, exit with error
-  echo "${datafile} must exist defining terminalUUID appServerUrl deviceId"
+  echo "${datafile} must exist defining terminalUUID deviceId"
   exit 1
 fi
 
-
 # for normal command execution, token must be already generated and stored in tokenfile
-tokenfile=${script/.sh/.token}
+tokenfile=${script%.sh}.token
 if [ -f ${tokenfile} ]
 then
   # tokens expire in one month
@@ -110,39 +109,41 @@ show_usage() {
 }
 
 check_arguments() {
-   check_arg() {
+  check_arg() {
     name="$1"
     value="$2"
-    if [ -z "${value}" ]; then
-       echo "missing argument ${name}"
-       show_usage
+    if [ -z "${value}" ]
+    then
+      echo "missing argument ${name}"
+      show_usage
     fi
-   }
+  }
 
-   check_arg "command" ${cmd}
-   if [ ${cmd} = set_stainfo ]
-   then
-     check_arg ssid ${ssid}
-	 check_arg pwd ${pwd}
-   fi
+  check_arg "command" ${cmd}
+  if [ ${cmd} = set_stainfo ]
+  then
+    check_arg ssid ${ssid}
+	check_arg pwd ${pwd}
+  fi
 }
 
 send_to_switch_no_token () {
-   data="$1"
-#  echo ${data}
+  data="$1"
+# echo ${data}
    
-   curl -sS --request POST "${appServerUrl} HTTP/1.1" \
-   --data "${data}" \
-   --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
+  curl -sS --request POST "${appServerUrl} HTTP/1.1" \
+  --data "${data}" \
+  --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
 
 send_to_switch () {
-   data="$1"
-   echo ${data}
+  data="$1"
+  echo ${appServerUrl}
+  echo ${data}
    
-   curl -sS --request POST "${appServerUrl}?token=${Token} HTTP/1.1" \
-   --data "${data}" \
-   --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
+  curl -sS --request POST "${appServerUrl}?token=${Token} HTTP/1.1" \
+  --data "${data}" \
+  --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
 
 ##
@@ -152,35 +153,47 @@ send_to_switch () {
 check_dependencies
 check_arguments
 
+#
+# First of all (except updating/getting token if required) get appServerUrl for deviceId from getDeviceList current listing
+#
+# Use main DNS alias in tplinkcloud to get device list and parameters for each, including appServerUrl
+appServerUrl="https://wap.tplinkcloud.com/"
+# for the get_token or getDeviceList commands use always main DNS alias; do not forget trailing /
+if [ "${cmd}" != get_token -a "${cmd}" != getDeviceList ]
+then
+  eval $(sh ./${script} getDeviceList | tr '{},' '\n' | grep -E 'appServerUrl|deviceId' | cut -d'"' -f2,4 | tr '"' = | while read line1; do read line2; echo $line1";"$line2; done | grep $deviceId | tr ';' '\n' | grep appServerUrl)
+  # after eval execution appServerUrl is changed to the url that getDeviceList assigns currently to deviceId
+fi
+
 case "${cmd}" in
   on)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":1}}}" }}'
-     ;;
+    send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":1}}}" }}'
+    ;;
   off)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":0}}}" }}'
-     ;;
+    send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"set_relay_state\":{\"state\":0}}}" }}'
+    ;;
   get_sysinfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"get_sysinfo\":{}}}" }}'
-     ;;
+    send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"system\":{\"get_sysinfo\":{}}}" }}'
+    ;;
   get_token)
-     # Token is generated by user/password login and stored in tokenfile in same folder as script
-	 # format of request reply:
-	 # {"error_code":0,"result":{"accountId":"699052","regTime":"2016-12-25 21:32:10","email":"jordi.monfar@gmail.com","token":"fd9d51c7-ff91bdb4cffc4e2092fad10"}}
-     # order of results is NOT guaranteed, observed that sometimes email comes before or after token
-     # it is safer to parse result by tag name than by position
-     echo "Generating token and storing it in ${tokenfile}"
-	 send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa_Android", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee ${tokenfile}
-     ;;
+    # Token is generated by user/password login and stored in tokenfile in same folder as script
+	# format of request reply:
+	# {"error_code":0,"result":{"accountId":"699052","regTime":"2016-12-25 21:32:10","email":"jordi.monfar@gmail.com","token":"fd9d51c7-ff91bdb4cffc4e2092fad10"}}
+    # order of results is NOT guaranteed, observed that sometimes email comes before or after token
+    # it is safer to parse result by tag name than by position
+    echo "Generating token and storing it in ${tokenfile}"
+	send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa_Android", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee ${tokenfile}
+    ;;
   get_scaninfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"get_scaninfo\":{\"refresh\":1}}}" }}'
-	 ;;
+    send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"get_scaninfo\":{\"refresh\":1}}}" }}'
+	;;
   set_stainfo)
-     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"set_stainfo\":{\"ssid\":\"'${ssid}'\",\"password\":\"'${pwd}'\",\"key_type\":3}}}" }}'
-	 ;;  
+    send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"set_stainfo\":{\"ssid\":\"'${ssid}'\",\"password\":\"'${pwd}'\",\"key_type\":3}}}" }}'
+	;;  
   getDeviceList)
-     send_to_switch '{"method":"getDeviceList"}'
-     ;;
+    send_to_switch '{"method":"getDeviceList"}'
+    ;;
   *)
-     show_usage
-     ;;
+    show_usage
+    ;;
 esac
