@@ -41,7 +41,7 @@ cd ${folder}
 
 # Read Kasa app credentials from external file, used only to generate tokens
 authfile=${script%.sh}.auth
-if [ -f ${authfile} ]
+if [ -s ${authfile} ]
 then
   # must define variables cloudUserName and cloudPassword in bash syntax
   # with valid username and password for Kasa app
@@ -58,7 +58,7 @@ fi
 
 # Read app and device parameters from external file
 datafile=${script%.sh}.data
-if [ -f ${datafile} ]
+if [ -s ${datafile} ]
 then
   # must define variables terminalUUID and deviceId in bash syntax
   . ./${datafile}
@@ -77,7 +77,7 @@ if [ -f ${tokenfile} ]
 then
   # tokens expire in one month
   # let's play safe, and if token is older than one week (604800 seconds) regenerate it
-  if [ $(($(date +%s)-$(date -r ${tokenfile} +%s))) -gt 604800 ]
+  if [ $(($(date +%s)-$(date -r ${tokenfile} +%s))) -gt 604800 -o ! -s ${tokenfile} ]
   then
     rm ${tokenfile}
     sh ./${script} get_token
@@ -92,6 +92,14 @@ else
 	sh ./${script} get_token
     Token=$(cat ${tokenfile})
   fi
+fi
+# check required variable is not empty, like for example with empty tokenfile
+# the only case where it can be empty is when invoked to generate the token
+if [ -z "${Token}" -a "${cmd}" != get_token ]
+then
+  # datafile or variable definition missing, exit with error
+  echo "${tokenfile} must exist with cloud auth token"
+  exit 1
 fi
 
 ##
