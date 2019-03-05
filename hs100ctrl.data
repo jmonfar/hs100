@@ -3,6 +3,7 @@ terminalUUID="701c7cd8-80d9-4dda-916c-738a9689e9c7"
 
 # Use getDeviceList command to get linked device list
 # note deviceId value for the device you want to control, and update it here
-#deviceId="8006E6EDC0696B7B38D61832B4A8F12E171E66D7"
-deviceId="8006EFF92BCEF5C73B879A73155FD89317B51676" 
+deviceId="80069E6E152F208D52282BAD7FD5794717A92BF8" #dormitori
+#deviceId="8006E6EDC0696B7B38D61832B4A8F12E171E66D7" #antic dormitori
+#deviceId="8006EFF92BCEF5C73B879A73155FD89317B51676" #arbre
 # For initial getDeviceList execution use arbitrary dummy values
