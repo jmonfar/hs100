@@ -7,6 +7,8 @@
 #
 #  Author George Georgovassilis, https://github.com/ggeorgovassilis/linuxscripts
 
+# Original taken from https://github.com/ggeorgovassilis/linuxscripts/tree/master/tp-link-hs100-smartplug
+
 echo args are $@ 
 ip=$1
 port=$2
