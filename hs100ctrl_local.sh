@@ -61,7 +61,8 @@ send_to_plug() {
    ip="$1"
    port="$2"
    payload="$3"
-   echo -n "$payload" | base64 --decode | nc -v $ip $port || echo couldn''t connect to $ip:$port, nc failed with exit code $?
+   # base64 and nc options modified from original script to adapt to limited versions found in Android
+   echo -n "$payload" | base64 -d | nc $ip $port || echo couldn''t connect to $ip:$port, nc failed with exit code $?
 }
 
 decode(){
