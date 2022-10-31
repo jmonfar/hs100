@@ -12,6 +12,11 @@ ip=$1
 port=$2
 cmd=$3
 
+# We need to cd to the script home directory, as the default pwd in Android lacks write permissions
+script=$(basename $0)
+folder=$(dirname $0)
+cd ${folder}
+
 # encoded (the reverse of decode) commands to send to the plug
 
 # encoded {"system":{"set_relay_state":{"state":1}}}
