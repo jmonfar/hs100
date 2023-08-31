@@ -139,7 +139,9 @@ send_to_switch_no_token () {
   data="$1"
 # echo ${data}
    
-  curl -sS --request POST "${appServerUrl} HTTP/1.1" \
+  curl -sS \
+  --request POST "${appServerUrl}" \
+  --http1.1 \
   --data "${data}" \
   --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
@@ -149,7 +151,9 @@ send_to_switch () {
   echo ${appServerUrl}
   echo ${data}
    
-  curl -sS --request POST "${appServerUrl}?token=${Token} HTTP/1.1" \
+  curl -sS \
+  --request POST "${appServerUrl}?token=${Token}" \
+  --http1.1 \
   --data "${data}" \
   --header "Content-Type: application/json" && echo || echo couldn''t connect, curl failed with exit code $?
 }
