@@ -194,7 +194,7 @@ case "${cmd}" in
     # order of results is NOT guaranteed, observed that sometimes email comes before or after token
     # it is safer to parse result by tag name than by position
     echo "Generating token and storing it in ${tokenfile}"
-	send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa_Android", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee ${tokenfile}
+	send_to_switch_no_token '{"method":"login", "params": {"appType":"Kasa", "cloudUserName":"'${cloudUserName}'", "cloudPassword":"'${cloudPassword}'", "terminalUUID":"'${terminalUUID}'"}}' | tr '{},' '\n' | grep token.: | cut -d '"' -f4 | tee ${tokenfile}
     ;;
   get_scaninfo)
     send_to_switch '{"method":"passthrough", "params": {"deviceId": "'${deviceId}'", "requestData": "{\"netif\":{\"get_scaninfo\":{\"refresh\":1}}}" }}'
